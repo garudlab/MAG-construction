@@ -1,3 +1,4 @@
 snakemake==9.1.0
 snakemake-executor-plugin-cluster-generic==1.0.9
 pandas
+biopython
