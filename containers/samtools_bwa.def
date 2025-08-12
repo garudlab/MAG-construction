@@ -1,0 +1,11 @@
+Bootstrap: docker
+From: continuumio/miniconda3
+
+%post
+    conda config --add channels conda-forge
+    conda config --add channels bioconda
+    conda install -c conda-forge -c bioconda bwa samtools=1.21
+    conda clean -a
+
+%runscript
+    exec "$@"
