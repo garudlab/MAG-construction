@@ -1,13 +1,15 @@
+# Adrian Verster, July 2025
+
 rule bwa_index:
     input:
-        join(PROJECT_DIR, "02_metaspades/{batch}/contigs.fasta")
+        join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/contigs.fasta")
     output:
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa"),
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa.amb"),
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa.ann"),
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa.bwt"),
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa.pac"),
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa.sa")
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.amb"),
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.ann"),
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.bwt"),
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.pac"),
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.sa")
     threads: 1
     resources:
         mem = 8,
@@ -22,14 +24,14 @@ rule bwa_align:
     input:
         fwd = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
         rev = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R2_val_2.fq.gz"),
-        asm = join(PROJECT_DIR, "03_binning/idx/{batch}.fa"),
-        amb = join(PROJECT_DIR, "03_binning/idx/{batch}.fa.amb"),
-        ann = join(PROJECT_DIR, "03_binning/idx/{batch}.fa.ann"),
-        bwt = join(PROJECT_DIR, "03_binning/idx/{batch}.fa.bwt"),
-        pac = join(PROJECT_DIR, "03_binning/idx/{batch}.fa.pac"),
-        sa = join(PROJECT_DIR, "03_binning/idx/{batch}.fa.sa")
+        asm = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
+        amb = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.amb"),
+        ann = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.ann"),
+        bwt = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.bwt"),
+        pac = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.pac"),
+        sa = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.sa")
     output:
-        join(PROJECT_DIR, "03_binning/alignments/{batch}/{sample}.bam")
+        join(PROJECT_DIR, "03_binning/alignments/{batch_or_sample}/{sample}.bam")
     threads: 8
     resources:
         mem = lambda wildcards, attempt: 16 * attempt,
@@ -44,11 +46,11 @@ rule bwa_align:
 
 rule metabat_depth:
     input:
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/alignments/{batch}/{sample}.bam"), 
-            batch=wildcards.batch, sample=batch_samples[wildcards.batch])
+        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/alignments/{batch_or_sample}/{sample}.bam"), 
+            batch_or_sample=wildcards.batch_or_sample, sample=batch_samples[wildcards.batch_or_sample])
     output:
-        depth = join(PROJECT_DIR, "03_binning/metabat/{batch}/depth.txt"),
-        paired = join(PROJECT_DIR, "03_binning/metabat/{batch}/paired.txt")
+        depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt"),
+        paired = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/paired.txt")
     resources:
         mem = 8,
         time = 6
@@ -63,17 +65,17 @@ rule metabat_depth:
 
 checkpoint metabat:
     input:
-        asm = join(PROJECT_DIR, "03_binning/idx/{batch}.fa"),
-        depth = join(PROJECT_DIR, "03_binning/metabat/{batch}/depth.txt")
+        asm = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
+        depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt")
     output:
-        directory(join(PROJECT_DIR, "03_binning/metabat/{batch}/bins/"))
+        directory(join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/"))
     threads: 8
     resources:
         mem = 64,
         time = 24
     singularity: "docker://quay.io/biocontainers/metabat2:2.15--h137b6e9_0"
     params:
-        outstring = join(PROJECT_DIR, "03_binning/metabat/{batch}/bins/bin")
+        outstring = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/bin")
     shell: """
         metabat2 --seed 1 -t {threads} --unbinned \
         --inFile {input.asm} --outFile {params.outstring} --abdFile {input.depth}
@@ -91,20 +93,20 @@ checkpoint metabat:
 
 checkpoint maxbin:
     input:
-        contigs = join(PROJECT_DIR, "03_binning/idx/{batch}.fa"),
-        depth = join(PROJECT_DIR, "03_binning/metabat/{batch}/depth.txt")
+        contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
+        depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt")
     output:
-        directory(join(PROJECT_DIR, "03_binning/maxbin/{batch}/bins"))
+        directory(join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins"))
     threads: 8
     resources:
         mem = 32,
         time = lambda wildcards, attempt: attempt * 6
     singularity: "docker://quay.io/biocontainers/maxbin2:2.2.7--he1b5a44_1"
     params:
-        outfolder = join(PROJECT_DIR, "03_binning/maxbin/{batch}/"),
-        logfile = join(PROJECT_DIR, "03_binning/maxbin/{batch}/maxbin.log"),
-        abundance_folder = join(PROJECT_DIR, "03_binning/maxbin/{batch}/depth_files"),
-        abundance_list = join(PROJECT_DIR, "03_binning/maxbin/{batch}/abundance_list.txt"),
+        outfolder = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/"),
+        logfile = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/maxbin.log"),
+        abundance_folder = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/depth_files"),
+        abundance_list = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/abundance_list.txt"),
         num_samples = lambda wildcards: len(batch_samples[wildcards.batch])
     shell: """
         if [ -d {params.outfolder} ]; then rm -r {params.outfolder}; fi
@@ -134,10 +136,10 @@ checkpoint maxbin:
 
 rule concoct_cut:
     input:
-        join(PROJECT_DIR, "03_binning/idx/{batch}.fa")
+        join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa")
     output:
-        cut_contigs = join(PROJECT_DIR, "03_binning/concoct/{batch}/contigs_10K.fa"),
-        bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch}/contigs_10K.bed")
+        cut_contigs = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.fa"),
+        bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.bed")
     resources:
         mem = 64,
         time = 12
@@ -149,11 +151,11 @@ rule concoct_cut:
 
 rule concoct_coverage:
     input:
-        bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch}/contigs_10K.bed"),
-        bams = lambda wildcards: expand(join(PROJECT_DIR, "03_binning/alignments/{batch}/{sample}.bam"), 
+        bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.bed"),
+        bams = lambda wildcards: expand(join(PROJECT_DIR, "03_binning/alignments/{batch_or_sample}/{sample}.bam"), 
             batch=wildcards.batch, sample=batch_samples[wildcards.batch])
     output:
-        join(PROJECT_DIR, "03_binning/concoct/{batch}/coverage_table.tsv")
+        join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/coverage_table.tsv")
     resources:
         mem = 64,
         time = 12
@@ -164,12 +166,12 @@ rule concoct_coverage:
 
 rule concoct_run:
     input:
-        cut_contigs = join(PROJECT_DIR, "03_binning/concoct/{batch}/contigs_10K.fa"),
-        coverage = join(PROJECT_DIR, "03_binning/concoct/{batch}/coverage_table.tsv")
+        cut_contigs = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.fa"),
+        coverage = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/coverage_table.tsv")
     output:
-        join(PROJECT_DIR, "03_binning/concoct/{batch}/clustering_gt1000.csv")
+        join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_gt1000.csv")
     params:
-        outdir = join(PROJECT_DIR, "03_binning/concoct/{batch}")
+        outdir = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}")
     threads: 4
     resources:
         mem = 64, 
@@ -182,9 +184,9 @@ rule concoct_run:
 
 rule concoct_merge:
     input:
-        join(PROJECT_DIR, "03_binning/concoct/{batch}/clustering_gt1000.csv")
+        join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_gt1000.csv")
     output:
-        join(PROJECT_DIR, "03_binning/concoct/{batch}/clustering_merged.csv")
+        join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_merged.csv")
     resources:
         mem = 64,
         time = 12
@@ -195,10 +197,10 @@ rule concoct_merge:
 
 checkpoint concoct_extract_bins:
     input:
-        original_contigs = join(PROJECT_DIR, "03_binning/idx/{batch}.fa"),
-        clustering_merged = join(PROJECT_DIR, "03_binning/concoct/{batch}/clustering_merged.csv")
+        original_contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
+        clustering_merged = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_merged.csv")
     output:
-        directory(join(PROJECT_DIR, "03_binning/concoct/{batch}/bins/"))
+        directory(join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/"))
     resources:
         mem = 64,
         time = 12
@@ -223,26 +225,26 @@ def get_concoct_bins(wildcards):
 
 rule DAStool:
     input:
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/metabat/{batch}/bins/{metabat_bin}.fa"), 
-            metabat_bin=get_metabat_bins(wildcards), batch=wildcards.batch),
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/maxbin/{batch}/bins/{maxbin_bin}.fasta"), 
-            maxbin_bin=get_maxbin_bins(wildcards), batch=wildcards.batch),
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/concoct/{batch}/bins/{concoct_bin}.fasta"), 
-            concoct_bin=get_concoct_bins(wildcards), batch=wildcards.batch),
-        contigs = join(PROJECT_DIR, "03_binning/idx/{batch}.fa")
+        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/{metabat_bin}.fa"), 
+            metabat_bin=get_metabat_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
+        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins/{maxbin_bin}.fasta"), 
+            maxbin_bin=get_maxbin_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
+        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/{concoct_bin}.fasta"), 
+            concoct_bin=get_concoct_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
+        contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa")
     output: 
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/completed.txt")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/completed.txt")
     #conda: "../envs/das_tool.yaml"
     singularity: "docker://quay.io/biocontainers/das_tool:1.1.3--r41hdfd78af_0"
     params:
-        outfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch}/"),
-        metabat_dir = join(PROJECT_DIR, "03_binning/metabat/{batch}/bins/"),
-        maxbin_dir = join(PROJECT_DIR, "03_binning/maxbin/{batch}/bins/"),
-        concoct_dir = join(PROJECT_DIR, "03_binning/concoct/{batch}/bins/"),
-        metabat_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch}/metabat_scaffold2bin.tsv"),
-        maxbin_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch}/maxbin_scaffold2bin.tsv"),
-        concoct_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch}/concoct_scaffold2bin.tsv"),
-        logfile = join(PROJECT_DIR, "03_binning/DAStool/{batch}/_DASTool.log")
+        outfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/"),
+        metabat_dir = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/"),
+        maxbin_dir = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins/"),
+        concoct_dir = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/"),
+        metabat_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/metabat_scaffold2bin.tsv"),
+        maxbin_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/maxbin_scaffold2bin.tsv"),
+        concoct_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/concoct_scaffold2bin.tsv"),
+        logfile = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/_DASTool.log")
     threads: 8
     resources:
         mem = 128,
@@ -269,12 +271,12 @@ rule DAStool:
 
 checkpoint extract_DAStool:
     input: 
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/completed.txt")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/completed.txt")
     output:
-        directory(join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins"))
+        directory(join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins"))
     params:
-        old_binfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch}/_DASTool_bins"),
-        new_binfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins")
+        old_binfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/_DASTool_bins"),
+        new_binfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins")
     shell: """
         cp -r {params.old_binfolder} {params.new_binfolder}
     """
@@ -282,7 +284,7 @@ checkpoint extract_DAStool:
 
 rule prepare_drep_input:
     input:
-        bins_dirs = expand(join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins"), batch=batch_list)
+        bins_dirs = expand(join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins"), batch=batch_or_sample)
     output:
         genome_list = join(PROJECT_DIR, "04_dRep/genome_list.txt"),
         combined_dir = directory(join(PROJECT_DIR, "04_dRep/combined_bins/"))
@@ -297,7 +299,7 @@ rule prepare_drep_input:
                 batch=$(basename $(dirname $bins_dir))
                 find "$bins_dir" -name "*.fa" ! -name "*unbinned*" | while read bin_file; do
                     bin_name=$(basename $bin_file .fa)
-                    new_name="${{batch}}_${{bin_name}}.fa"
+                    new_name="${{batch_or_sample}}_${{bin_name}}.fa"
                     cp "$bin_file" "{params.combined_dir}/$new_name"
                     echo "{params.combined_dir}$new_name" >> {output.genome_list}
                 done
@@ -344,7 +346,6 @@ rule checkm_DAStool_qa:
     """
 
 
-
 rule checkm_to_drep:
     input:
         checkm_results=join(PROJECT_DIR, "04_dRep/checkm.tsv"),
@@ -354,6 +355,7 @@ rule checkm_to_drep:
         """
         python lib/convert_checkm_to_drep.py -i {input} -o {output}
         """
+
 
 rule dRep_genome_collection_strains:
     input:

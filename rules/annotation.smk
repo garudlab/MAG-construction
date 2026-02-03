@@ -1,14 +1,16 @@
+# Adrian Verster, July 2025
+
 rule quast_bins:
     input:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins/{bin}.fa")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins/{bin}.fa")
     output:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/quast/{bin}/report.tsv")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/quast/{bin}/report.tsv")
     singularity: "docker://quay.io/biocontainers/quast:5.0.2--py35pl526ha92aebf_0"
     resources:
         mem = 8,
         time = 1
     params:
-        quastfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch}/quast/{bin}/"),
+        quastfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/quast/{bin}/"),
         thresholds = "0,10000,50000,100000,250000,500000,1000000,2000000,3000000"
     shell: """
         quast.py -o {params.quastfolder} {input} --contig-thresholds {params.thresholds} --fast
@@ -16,17 +18,17 @@ rule quast_bins:
 
 rule prokka_bins:
     input:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins/{bin}.fa")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins/{bin}.fa")
     output:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/prokka/{bin}/{batch}_{bin}.gff")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/prokka/{bin}/{batch_or_sample}_{bin}.gff")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
     resources:
         mem = 48,
         time = lambda wildcards, attempt: 4 * attempt
     threads: 8
     params:
-        prokkafolder = join(PROJECT_DIR, "03_binning/DAStool/{batch}/prokka/{bin}"),
-        prefix = "{batch}_{bin}"
+        prokkafolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/prokka/{bin}"),
+        prefix = "{batch_or_sample}_{bin}"
     shell: """
         if [[ {wildcards.bin} =~ "unbinned" ]]; then
             mkdir -p {params.prokkafolder}
@@ -39,9 +41,9 @@ rule prokka_bins:
 
 rule aragorn_bins:
     input:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins/{bin}.fa")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins/{bin}.fa")
     output:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/rna/trna/{bin}.txt")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/rna/trna/{bin}.txt")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
     resources:
         mem = 8,
@@ -53,9 +55,9 @@ rule aragorn_bins:
 
 rule barrnap_bins:
     input:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/bins/{bin}.fa")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins/{bin}.fa")
     output:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch}/rna/rrna/{bin}.txt")
+        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/rna/rrna/{bin}.txt")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
     resources:
         mem = 8,

@@ -1,3 +1,5 @@
+# Adrian Verster, July 2025
+
 rule deduplicate:
     input:
         fwd = join(FASTQ_INDIR, "{sample}_1.fastq.gz"),

@@ -3,10 +3,12 @@ input_directory: "/u/project/ngarud/Garud_lab/hsiao_data/fastqs_renamed"
 output_directory: "/u/project/ngarud/Garud_lab/averster/mag_results/"
 
 # Path to sample metadata CSV file
+coassembly: False
 sample_table: "/u/project/ngarud/Garud_lab/hsiao_data/metadata/metadata.csv"
 sample_col: "sample_id" # It assumes you have files {sample}_1.fastq.gz and {sample}_2.fastq.gz
 batch_col: "subject_id" # For co-assembly
 
+remove_host: False
 host_genome: "/u/project/ngarud/Garud_lab/averster/mag_results/Sequences/Mus_musculus.GRCm39.dna.primary_assembly.fa.gz"
 
 # Checkm
