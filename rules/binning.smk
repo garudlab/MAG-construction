@@ -107,7 +107,7 @@ checkpoint maxbin:
         logfile = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/maxbin.log"),
         abundance_folder = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/depth_files"),
         abundance_list = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/abundance_list.txt"),
-        num_samples = lambda wildcards: len(batch_samples[wildcards.batch])
+        num_samples = lambda wildcards: len(batch_samples[wildcards.batch_or_sample])
     shell: """
         if [ -d {params.outfolder} ]; then rm -r {params.outfolder}; fi
         mkdir -p {params.outfolder}
@@ -153,7 +153,7 @@ rule concoct_coverage:
     input:
         bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.bed"),
         bams = lambda wildcards: expand(join(PROJECT_DIR, "03_binning/alignments/{batch_or_sample}/{sample}.bam"), 
-            batch=wildcards.batch, sample=batch_samples[wildcards.batch])
+            batch_or_sample=wildcards.batch_or_sample, sample=batch_samples[wildcards.batch_or_sample])
     output:
         join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/coverage_table.tsv")
     resources:
@@ -284,7 +284,7 @@ checkpoint extract_DAStool:
 
 rule prepare_drep_input:
     input:
-        bins_dirs = expand(join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins"), batch=batch_or_sample)
+        bins_dirs = expand(join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins"), batch_or_sample=batch_or_sample_all)
     output:
         genome_list = join(PROJECT_DIR, "04_dRep/genome_list.txt"),
         combined_dir = directory(join(PROJECT_DIR, "04_dRep/combined_bins/"))

@@ -1,22 +1,29 @@
 # Adrian Verster, July 2025
 
+QC_DIR = config.get("scratch_dir") if config.get("scratch_dir") is not None else PROJECT_DIR
 
-def get_processed_reads(wildcards):
+def get_processed_reads(sample_or_wildcards):
+    sample = sample_or_wildcards.sample if hasattr(sample_or_wildcards, 'sample') else sample_or_wildcards
+    if config.get("skip_qc", False):
+        return {
+            "fwd": join(FASTQ_INDIR, f"{sample}_1.fastq.gz"),
+            "rev": join(FASTQ_INDIR, f"{sample}_2.fastq.gz")
+        }
     if config.get("remove_host", True):
         return {
-            "fwd": join(PROJECT_DIR, f"01_processing/03_dehost/{wildcards.sample}_R1.fq.gz"),
-            "rev": join(PROJECT_DIR, f"01_processing/03_dehost/{wildcards.sample}_R2.fq.gz")
+            "fwd": join(QC_DIR, f"01_processing/03_dehost/{sample}_R1.fq.gz"),
+            "rev": join(QC_DIR, f"01_processing/03_dehost/{sample}_R2.fq.gz")
         }
     else:
         return {
-            "fwd": join(PROJECT_DIR, f"01_processing/02_trimmed/{wildcards.sample}_R1_val_1.fq.gz"),
-            "rev": join(PROJECT_DIR, f"01_processing/02_trimmed/{wildcards.sample}_R2_val_2.fq.gz")
+            "fwd": join(QC_DIR, f"01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
+            "rev": join(QC_DIR, f"01_processing/02_trimmed/{sample}_R2_val_2.fq.gz")
         }
 
 rule spades_coassembly:
     input: 
-        fwd = lambda wildcards: [get_processed_reads({"sample": s})["fwd"] for s in batch_samples[wildcards.batch]],
-        rev = lambda wildcards: [get_processed_reads({"sample": s})["rev"] for s in batch_samples[wildcards.batch]]
+        fwd = lambda wildcards: [get_processed_reads(s)["fwd"] for s in batch_samples[wildcards.batch]],
+        rev = lambda wildcards: [get_processed_reads(s)["rev"] for s in batch_samples[wildcards.batch]]
     output: 
         contigs = join(PROJECT_DIR, "02_metaspades/{batch}/contigs.fasta"),
         scaffolds = join(PROJECT_DIR, "02_metaspades/{batch}/scaffolds.fasta"),
@@ -82,16 +89,9 @@ rule spades_single:
 
 
 
-def get_assembly_output(wildcards):
-    if config.get("coassembly", True):
-        return join(PROJECT_DIR, f"02_metaspades/{wildcards.batch_or_sample}/contigs.fasta")
-    else:
-        return expand(join(PROJECT_DIR, "02_metaspades/{sample}/contigs.fasta"), 
-                     sample=batch_samples[wildcards.batch_or_sample])
-
 rule quast_spades:
     input:
-        get_assembly_output
+        join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/contigs.fasta")
     output:
         join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/quast/report.tsv")
     singularity: "docker://quay.io/biocontainers/quast:5.0.2--py35pl526ha92aebf_0"
@@ -113,11 +113,11 @@ rule quast_spades:
 
 rule combine_spades_quast_reports:
     input:
-        expand(join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/quast/report.tsv"), batch_or_sample=batch_or_sample_list)
+        expand(join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/quast/report.tsv"), batch_or_sample=batch_or_sample_all)
     output:
         join(PROJECT_DIR, "02_metaspades/quast_report_merged.tsv")
     params:
-        batch_or_sample_names = batch_or_sample_list,
+        batch_or_sample_names = batch_or_sample_all,
         assembly_dir = join(PROJECT_DIR, "02_metaspades/")
     run:
         import pandas as pd

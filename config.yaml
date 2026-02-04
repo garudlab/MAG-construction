@@ -2,6 +2,9 @@
 input_directory: "/u/project/ngarud/Garud_lab/hsiao_data/fastqs_renamed"
 output_directory: "/u/project/ngarud/Garud_lab/averster/mag_results/"
 
+skip_qc: False
+scratch_dir: null
+
 # Path to sample metadata CSV file
 coassembly: False
 sample_table: "/u/project/ngarud/Garud_lab/hsiao_data/metadata/metadata.csv"

@@ -1,6 +1,6 @@
 # Adrian Verster, July 2025
-# run it with snakemake --profile cluster -j 20 --use-singularity --singularity-args "--bind /u:/u" -k --keep-going --keep-incomplete --rerun-triggers mtime --use-conda -k
-# snakemake -j 20 --use-singularity --singularity-args "--bind /u:/u" -k --keep-going --keep-incomplete --rerun-triggers mtime -k --singularity-prefix containers/
+# snakemake --profile cluster -j 20 --use-singularity --singularity-args "--bind /u:/u" -k --keep-going --keep-incomplete --rerun-triggers mtime -k --singularity-prefix containers/
+
 from os.path import join, abspath, expanduser
 import pandas as pd
 
@@ -30,16 +30,21 @@ def get_samples_and_batches(sample_file, sample_col='sample_id', batch_col='subj
 
 if config["coassembly"]:
     samples, batch_samples = get_samples_and_batches(config['sample_table'], config['sample_col'], config['batch_col'])
-    batch_or_sample = list(batch_samples.keys())
+    batch_or_sample_all = list(batch_samples.keys())
     print(f"Samples found: {samples}")
     print(f"Batches found: {batch_or_sample}")
     print(f'Total samples: {len(samples)}')
-    print(f'Total batches: {len(batch_or_sample)}')
-
+    print(f'Total batches: {len(batch_or_sample_all)}')
 else:
-    batch_samples = {} # Dummy dict that points to itself
-    batch_or_sample = xxxxxxxx
-    print(f'Total samples: {len(batch_or_sample)}')
+    all_files = set(os.listdir(FASTQ_INDIR))
+    samples = [f.replace('_1.fastq.gz', '') for f in all_files 
+                       if f.endswith('_1.fastq.gz') and f.replace('_1.fastq.gz', '_2.fastq.gz') in all_files]
+    batch_or_sample_all = samples
+    batch_samples = {}
+    for sample in batch_or_sample_all:
+        batch_samples[sample] = sample
+    print(f'Total samples: {len(batch_or_sample_all)}')
+
 
 
 include: "rules/qc_processing.smk"
@@ -47,22 +52,6 @@ include: "rules/assembly.smk"
 include: "rules/binning.smk"
 include: "rules/annotation.smk"
 
-# def all_bin_outputs(batch_or_sample_all):
-#     bin_outputs = []
-#     for batch_or_sample in batch_or_sample_all:
-#         bin_outputs.extend([
-#             join(PROJECT_DIR, f"03_binning/DAStool/{batch_or_sample}/bins"),
-#             join(PROJECT_DIR, f"03_binning/DAStool/{batch_or_sample}/checkm/checkm.tsv")
-#         ])
-#     return bin_outputs
-
-# def all_annotation_outputs():
-#     annotation_outputs = []
-#     for batch in batch_list:
-#         annotation_outputs.extend([
-#             join(PROJECT_DIR, f"03_binning/DAStool/{batch_or_sample}/bins")
-#         ])
-#     return annotation_outputs
 
 outfiles_qc = []
 outfiles_qc.extend(expand(join(PROJECT_DIR, "01_processing/01_dedup/{sample}_R1.fastq.gz"), sample=samples))
