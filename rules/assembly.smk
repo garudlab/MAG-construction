@@ -2,23 +2,10 @@
 
 QC_DIR = config.get("scratch_dir") if config.get("scratch_dir") is not None else PROJECT_DIR
 
-def get_processed_reads(sample_or_wildcards):
-    sample = sample_or_wildcards.sample if hasattr(sample_or_wildcards, 'sample') else sample_or_wildcards
-    if config.get("skip_qc", False):
-        return {
-            "fwd": join(FASTQ_INDIR, f"{sample}_1.fastq.gz"),
-            "rev": join(FASTQ_INDIR, f"{sample}_2.fastq.gz")
-        }
-    if config.get("remove_host", True):
-        return {
-            "fwd": join(QC_DIR, f"01_processing/03_dehost/{sample}_R1.fq.gz"),
-            "rev": join(QC_DIR, f"01_processing/03_dehost/{sample}_R2.fq.gz")
-        }
-    else:
-        return {
-            "fwd": join(QC_DIR, f"01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
-            "rev": join(QC_DIR, f"01_processing/02_trimmed/{sample}_R2_val_2.fq.gz")
-        }
+if config["coassembly"]:
+    ruleorder: spades_coassembly > spades_single
+else:
+    ruleorder: spades_single > spades_coassembly
 
 rule spades_coassembly:
     input: 

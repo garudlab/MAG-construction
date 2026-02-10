@@ -3,19 +3,19 @@ input_directory: "/u/project/ngarud/Garud_lab/hsiao_data/fastqs_renamed"
 output_directory: "/u/project/ngarud/Garud_lab/averster/mag_results/"
 
 skip_qc: False
-scratch_dir: null
+scratch_dir: null # Put a patch in here to use a scratch directory for the QC section of the pipeline
 
 # Path to sample metadata CSV file
 coassembly: False
-sample_table: "/u/project/ngarud/Garud_lab/hsiao_data/metadata/metadata.csv"
+sample_table: "/u/project/ngarud/Garud_lab/hsiao_data/metadata.csv"
 sample_col: "sample_id" # It assumes you have files {sample}_1.fastq.gz and {sample}_2.fastq.gz
-batch_col: "subject_id" # For co-assembly
+batch_col: "batch_id" # Samples with the same batch_id are co-assembled
 
 remove_host: False
 host_genome: "/u/project/ngarud/Garud_lab/averster/mag_results/Sequences/Mus_musculus.GRCm39.dna.primary_assembly.fa.gz"
 
 # Checkm
-checkm_data: "/u/project/ngarud/Garud_lab/averster/databases/checkm_data"
+checkm_data: "/u/project/ngarud/Garud_lab/MAG_assembly_databases/checkm_data"
 
 # Kraken
-kraken2db: "/u/project/ngarud/Garud_lab/averster/databases/kraken"
+kraken2db: "/u/project/ngarud/Garud_lab/MAG_assembly_databases/kraken"

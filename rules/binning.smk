@@ -14,7 +14,7 @@ rule bwa_index:
     resources:
         mem = 8,
         time = 2
-    container: "/u/home/a/averster/samtools_bwa.sif"
+    container: "containers/samtools_bwa.sif"
     shell: """
         cp {input} {output[0]}
         bwa index {output[0]}
@@ -22,8 +22,9 @@ rule bwa_index:
 
 rule bwa_align:
     input:
-        fwd = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
-        rev = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R2_val_2.fq.gz"),
+        #fwd = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
+        #rev = join(PROJECT_DIR, "01_processing/02_trimmed/{sample}_R2_val_2.fq.gz"),
+        unpack(get_processed_reads),
         asm = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
         amb = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.amb"),
         ann = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.ann"),
@@ -36,7 +37,7 @@ rule bwa_align:
     resources:
         mem = lambda wildcards, attempt: 16 * attempt,
         time = 12
-    container: "/u/home/a/averster/samtools_bwa.sif"
+    container: "containers/samtools_bwa.sif"
     shell: """
         mkdir -p $(dirname {output})
         bwa mem -t {threads} {input.asm} {input.fwd} {input.rev} | \
@@ -296,7 +297,7 @@ rule prepare_drep_input:
         rm -f {output.genome_list}
         for bins_dir in {input.bins_dirs}; do
             if [ -d "$bins_dir" ]; then
-                batch=$(basename $(dirname $bins_dir))
+                batch_or_sample=$(basename $(dirname $bins_dir))
                 find "$bins_dir" -name "*.fa" ! -name "*unbinned*" | while read bin_file; do
                     bin_name=$(basename $bin_file .fa)
                     new_name="${{batch_or_sample}}_${{bin_name}}.fa"
