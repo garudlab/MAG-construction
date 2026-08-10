@@ -18,6 +18,9 @@ def get_samples_and_batches(sample_file, sample_col='sample_id', batch_col='subj
     df = pd.read_csv(sample_file)
     
     samples = df[sample_col].tolist()
+    if config["samples_ignore"] is not None:
+        samples = [x for x in samples if x not in config["samples_ignore"]]
+
     batch_samples = {}
     
     for _, row in df.iterrows():
@@ -58,14 +61,18 @@ if config["coassembly"]:
     print(f'Total batches: {len(batch_or_sample_all)}')
 else:
     all_files = set(os.listdir(FASTQ_INDIR))
-    samples = [f.replace('_1.fastq.gz', '') for f in all_files 
+    samples = [f.replace('_1.fastq.gz', '') for f in all_files
                        if f.endswith('_1.fastq.gz') and f.replace('_1.fastq.gz', '_2.fastq.gz') in all_files]
+    if config["samples_ignore"] is not None:
+        samples = [x for x in samples if x not in config["samples_ignore"]]
+    if config["samples_sub"] is not None:
+        samples = [x for x in samples if x in config["samples_sub"]]
+
     batch_or_sample_all = samples
     batch_samples = {}
     for sample in batch_or_sample_all:
         batch_samples[sample] = [sample]
     print(f'Total samples: {len(batch_or_sample_all)}')
-
 
 include: "rules/qc_processing.smk"
 include: "rules/assembly.smk"

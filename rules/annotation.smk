@@ -78,8 +78,8 @@ rule kraken2_assembly_strains:
         db = config["kraken2db"]
     resources:
         mem = 256,
-        time = 6
-    threads: 16
+        time = 24
+    threads: 32
     shell: """
         kraken2 --db {params.db} --threads {threads} \
         --output {output.krak} --report {output.krak_report} {input}/*.fa

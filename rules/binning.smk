@@ -64,7 +64,7 @@ rule metabat_depth:
         {input}
     """
 
-checkpoint metabat:
+rule metabat:
     input:
         asm = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
         depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt")
@@ -92,7 +92,7 @@ checkpoint metabat:
         fi
     """
 
-checkpoint maxbin:
+rule maxbin:
     input:
         contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
         depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt")
@@ -196,7 +196,7 @@ rule concoct_merge:
         merge_cutup_clustering.py {input} > {output}
     """
 
-checkpoint concoct_extract_bins:
+rule concoct_extract_bins:
     input:
         original_contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa"),
         clustering_merged = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_merged.csv")
@@ -212,26 +212,11 @@ checkpoint concoct_extract_bins:
         --output_path {output}
     """
 
-def get_metabat_bins(wildcards):
-    checkpoint_output = checkpoints.metabat.get(**wildcards).output[0]
-    return glob_wildcards(os.path.join(checkpoint_output, "{metabat_bin}.fa")).metabat_bin
-
-def get_maxbin_bins(wildcards):
-    checkpoint_output = checkpoints.maxbin.get(**wildcards).output[0]
-    return glob_wildcards(os.path.join(checkpoint_output, "{maxbin_bin}.fasta")).maxbin_bin
-
-def get_concoct_bins(wildcards):
-    checkpoint_output = checkpoints.concoct_extract_bins.get(**wildcards).output[0]
-    return glob_wildcards(os.path.join(checkpoint_output, "{concoct_bin}.fasta")).concoct_bin
-
 rule DAStool:
     input:
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/{metabat_bin}.fa"), 
-            metabat_bin=get_metabat_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins/{maxbin_bin}.fasta"), 
-            maxbin_bin=get_maxbin_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
-        lambda wildcards: expand(join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/{concoct_bin}.fasta"), 
-            concoct_bin=get_concoct_bins(wildcards), batch_or_sample=wildcards.batch_or_sample),
+        metabat_dir = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/"),
+        maxbin_dir = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins/"),
+        concoct_dir = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/"),
         contigs = join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa")
     output: 
         join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/completed.txt")
@@ -239,9 +224,6 @@ rule DAStool:
     singularity: "docker://quay.io/biocontainers/das_tool:1.1.3--r41hdfd78af_0"
     params:
         outfolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/"),
-        metabat_dir = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/"),
-        maxbin_dir = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins/"),
-        concoct_dir = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/"),
         metabat_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/metabat_scaffold2bin.tsv"),
         maxbin_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/maxbin_scaffold2bin.tsv"),
         concoct_tsv = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/concoct_scaffold2bin.tsv"),
@@ -253,9 +235,9 @@ rule DAStool:
     shell: """
         mkdir -p {params.outfolder}
         
-        Fasta_to_Scaffolds2Bin.sh -e fa -i {params.metabat_dir} > {params.metabat_tsv}
-        Fasta_to_Scaffolds2Bin.sh -e fasta -i {params.maxbin_dir} > {params.maxbin_tsv}
-        Fasta_to_Scaffolds2Bin.sh -e fa -i {params.concoct_dir} > {params.concoct_tsv}
+        Fasta_to_Scaffolds2Bin.sh -e fa -i {input.metabat_dir} > {params.metabat_tsv}
+        Fasta_to_Scaffolds2Bin.sh -e fasta -i {input.maxbin_dir} > {params.maxbin_tsv}
+        Fasta_to_Scaffolds2Bin.sh -e fa -i {input.concoct_dir} > {params.concoct_tsv}
         
         DAS_Tool -i {params.metabat_tsv},{params.maxbin_tsv},{params.concoct_tsv} \
         -l metabat,maxbin,concoct -c {input.contigs} -o {params.outfolder} \
@@ -270,7 +252,7 @@ rule DAStool:
         touch {output}
     """
 
-checkpoint extract_DAStool:
+rule extract_DAStool:
     input: 
         join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/completed.txt")
     output:
@@ -318,8 +300,9 @@ rule checkm_DAStool_lineage:
     singularity: "docker://quay.io/biocontainers/checkm-genome:1.2.4--pyhdfd78af_0"
     resources:
         mem = 32, # was 128, way too much
-        time = 12
-    threads: 8
+        time = 12,
+        threads = 16
+    threads: 16
     params:
         checkm_data=config["checkm_data"]
     shell: """
@@ -358,18 +341,51 @@ rule checkm_to_drep:
         """
 
 
+ruleorder: checkm2_predict > checkm_DAStool_qa
+ruleorder: checkm2_to_drep > checkm_to_drep
+
+rule checkm2_predict:
+    input:
+        combined_dir = join(PROJECT_DIR, "04_dRep/combined_bins/")
+    output:
+        report = join(PROJECT_DIR, "04_dRep/checkm2/quality_report.tsv"),
+        dir = directory(join(PROJECT_DIR, "04_dRep/checkm2/")),
+    singularity: "docker://quay.io/biocontainers/checkm2:1.0.2--pyh7cba7a3_0"
+    resources:
+        mem = 32,
+        time = 72,
+        threads = 16
+    threads: 16
+    params:
+        checkm2_db = config["checkm2_data"]
+    shell: """
+        export CHECKM2DB={params.checkm2_db}
+        checkm2 predict -t {threads} -x fa --input {input.combined_dir} --output-directory {output.dir} --force
+    """
+
+rule checkm2_to_drep:
+    input:
+        join(PROJECT_DIR, "04_dRep/checkm2/quality_report.tsv"),
+    output:
+        checkm_results=join(PROJECT_DIR, "04_dRep/checkm_for_drep.csv"),
+    shell:
+        """
+        python lib/convert_checkm2_to_drep.py -i {input} -o {output}
+        """
+
+
 rule dRep_genome_collection_strains:
     input:
-        genome_list = join(PROJECT_DIR, "04_dRep/genome_list.txt"),
-        combined_dir = join(PROJECT_DIR, "04_dRep/combined_bins/"),
-        checkm_results=join(PROJECT_DIR, "04_dRep/checkm_for_drep.csv"),
+        genome_list = ancient(join(PROJECT_DIR, "04_dRep/genome_list.txt")),
+        combined_dir = ancient(join(PROJECT_DIR, "04_dRep/combined_bins/")),
+        checkm_results = ancient(join(PROJECT_DIR, "04_dRep/checkm_for_drep.csv")),
     output:
         directory(join(PROJECT_DIR, "04_dRep/dereplicated_genomes/"))
-    singularity: "docker://quay.io/biocontainers/drep:3.2.0--py_0"
-    threads: 16
+    singularity: "/u/home/a/averster/mag_creation/containers/drep4.sif"
+    threads: 32
     resources:
         mem = 128,
-        time = 48
+        time = 168
     params:
         drep_dir = join(PROJECT_DIR, "04_dRep/"),
         completeness = 75,
@@ -381,9 +397,8 @@ rule dRep_genome_collection_strains:
         dRep dereplicate {params.drep_dir} \
         -g {input.genome_list} \
         -comp {params.completeness} -con {params.contamination} \
+        --primary_algorithm skani \
+        --S_algorithm skani \
         --genomeInfo {input.checkm_results} \
         -pa {params.ani_primary} -sa {params.ani_secondary} -p {threads}
     """
-
-
-

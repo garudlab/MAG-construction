@@ -25,6 +25,7 @@ rule spades_coassembly:
         outdir = join(PROJECT_DIR, "02_metaspades/{batch}/"),
         tmp_dir = join(PROJECT_DIR, "tmp/spades_{batch}")
     shell: """
+        ulimit -c 0
         rm -rf {params.outdir}
         mkdir -p {params.outdir}
         mkdir -p {params.tmp_dir}
@@ -53,13 +54,14 @@ rule spades_single:
         scaffolds = join(PROJECT_DIR, "02_metaspades/{sample}/scaffolds.fasta")
     resources:
         time = lambda wildcards, attempt: 24 * attempt,
-        mem = lambda wildcards, attempt: 64 * attempt,
+        mem = lambda wildcards, attempt: 128 * attempt,
     threads: 16
     singularity: "docker://quay.io/biocontainers/spades:3.15.5--h95f258a_1"
     params:
         outdir = join(PROJECT_DIR, "02_metaspades/{sample}/"),
         tmp_dir = join(PROJECT_DIR, "tmp/spades_{sample}")
     shell: """
+        ulimit -c 0
         rm -rf {params.outdir}
         mkdir -p {params.outdir}
         mkdir -p {params.tmp_dir}

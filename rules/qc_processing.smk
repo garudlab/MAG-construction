@@ -14,8 +14,8 @@ rule deduplicate:
         outdir = join(QC_DIR, "01_processing/01_dedup/")
     threads: 1
     resources:
-        mem = lambda wildcards, attempt: attempt * 16, 
-        time = 24
+        mem = lambda wildcards, attempt: attempt * 8, 
+        time = lambda wildcards, attempt: attempt * 4
     singularity: "docker://dzs74/htstream"
     benchmark: join(QC_DIR, "01_processing/01_dedup/{sample}_time.txt")
     shell: """
@@ -30,10 +30,10 @@ rule trim_galore:
     output:
         fwd = join(QC_DIR, "01_processing/02_trimmed/{sample}_R1_val_1.fq.gz"),
         rev = join(QC_DIR, "01_processing/02_trimmed/{sample}_R2_val_2.fq.gz"),
-    threads: 2
+    threads: 4
     resources:
-        mem=32,
-        time=lambda wildcards, attempt: attempt * 24
+        mem=lambda wildcards, attempt: attempt * 8,
+        time=lambda wildcards, attempt: attempt * 4
     params:
         q_min = 30,
         min_len = 60,

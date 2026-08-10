@@ -1,0 +1,14 @@
+Bootstrap: docker
+From: continuumio/miniconda3
+
+%post
+    conda install -n base -c bioconda -c conda-forge -y \
+        mash \
+        fastani \
+        skani \
+        prodigal
+    conda clean -a -y
+    pip install drep
+
+%runscript
+    exec "$@"
