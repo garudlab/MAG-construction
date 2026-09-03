@@ -1,9 +1,10 @@
-executor: cluster-generic
-cluster-generic-submit-cmd: "qsub -l h_vmem={resources.mem_mb}M,h_rt={resources.time}:00:00 -pe shared {threads} -cwd -o logs_cluster/ -e logs_cluster/ -V"
-cluster-generic-cancel-cmd: "qdel"
+executor: slurm
+slurm-qos: campus24
 jobs: 10
 rerun-incomplete: true
 default-resources:
-  - mem=4
-  - time=2
-  - threads=1
+  - mem_mb=4000
+  - runtime=120
+  - cpus_per_task=1
+  - slurm_partition=pi_shared
+  - slurm_account=pi_ngarud
