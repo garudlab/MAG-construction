@@ -1,5 +1,5 @@
 snakemake==9.23
-snakemake-executor-plugin-cluster-generic==1.0.9
+snakemake-executor-plugin-slurm
 snakemake-scheduler-plugin-greedy
 pandas
 biopython
