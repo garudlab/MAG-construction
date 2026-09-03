@@ -7,8 +7,8 @@ rule quast_bins:
         touch(join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/quast_all.done"))
     singularity: "docker://quay.io/biocontainers/quast:5.0.2--py35pl526ha92aebf_0"
     resources:
-        mem = 8,
-        time = 4
+        mem_mb = 8000,
+        runtime = 240
     params:
         quast_root = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/quast"),
         thresholds = "0,10000,50000,100000,250000,500000,1000000,2000000,3000000"
@@ -33,37 +33,14 @@ rule aggregate_quast:
 
 rule prokka_bins:
     input:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/bins/{bin}.fa")
-    output:
-        join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/prokka/{bin}/{batch_or_sample}_{bin}.gff")
-    singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
-    resources:
-        mem = 48,
-        time = lambda wildcards, attempt: 4 * attempt
-    threads: 8
-    params:
-        prokkafolder = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/prokka/{bin}"),
-        prefix = "{batch_or_sample}_{bin}"
-    shell: """
-        if [[ {wildcards.bin} =~ "unbinned" ]]; then
-            mkdir -p {params.prokkafolder}
-            touch {output}
-        else
-            prokka {input} --outdir {params.prokkafolder} --prefix {params.prefix} \
-            --centre X --compliant --force --cpus {threads} --noanno
-        fi
-    """
-
-rule prokka_bins2:
-    input:
         join(PROJECT_DIR, "04_dRep/combined_bins/{bin}.fa")
     output:
         join(PROJECT_DIR, "04_dRep/combined_bins_prokka/{bin}/{bin}.gff")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.6--pl5321hdfd78af_5"
     resources:
-	    mem_mb = 16000,
-	    runtime = 720,
-	    cpus_per_task = 8
+        mem_mb = 16000,
+        runtime = 720,
+        cpus_per_task = 8
     threads: 8
     params:
         prokkafolder = join(PROJECT_DIR, "04_dRep/combined_bins_prokka/{bin}/"),
@@ -79,7 +56,7 @@ rule prokka_bins2:
     """
 
 BINS, = glob_wildcards(join(PROJECT_DIR, "04_dRep/combined_bins/{bin}.fa"))
-rule run_prokka_bins2:
+rule run_prokka_bins:
     input:
         expand(
             join(PROJECT_DIR, "04_dRep/combined_bins_prokka/{bin}/{bin}.gff"),
@@ -94,8 +71,8 @@ rule aragorn_bins:
         join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/rna/trna/{bin}.txt")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
     resources:
-        mem = 8,
-        time = 1
+        mem_mb = 8000,
+        runtime = 60
     shell: """
         mkdir -p $(dirname {output})
         aragorn -t {input} -o {output}
@@ -108,8 +85,8 @@ rule barrnap_bins:
         join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/rna/rrna/{bin}.txt")
     singularity: "docker://quay.io/biocontainers/prokka:1.14.5--pl526_0"
     resources:
-        mem = 8,
-        time = 1
+        mem_mb = 8000,
+        runtime = 60
     shell: """
         mkdir -p $(dirname {output})
         barrnap {input} > {output}
@@ -125,8 +102,9 @@ rule kraken2_assembly_strains:
     params:
         db = config["kraken2db"]
     resources:
-        mem = 256,
-        time = 24
+        mem_mb = 256000,
+        runtime = 1440,
+        cpus_per_task = 32
     threads: 32
     shell: """
         kraken2 --db {params.db} --threads {threads} \
@@ -141,8 +119,8 @@ rule build_contig_taxonomy_mapping:
         contig_mapping = join(PROJECT_DIR, "04_dRep/contig_to_bin.pkl"),
         taxonomy_mapping = join(PROJECT_DIR, "04_dRep/taxonomy_mapping.pkl")
     resources:
-        mem = 16,
-        time = 4
+        mem_mb = 16000,
+        runtime = 240
     shell: """
         python lib/build_contig_mapping.py \
         --genomes_dir {input.genomes_dir} \
@@ -160,8 +138,8 @@ rule parse_kraken_annotation:
     output:
         join(PROJECT_DIR, "04_dRep/dereplicated_genomes_species_calls.csv")
     resources:
-        mem = 16,
-        time = 4
+        mem_mb = 16000,
+        runtime = 240
     shell: """
         python lib/parse_kraken_annotation.py \
         --kraken_file {input.kraken_file} \

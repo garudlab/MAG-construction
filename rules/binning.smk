@@ -12,8 +12,9 @@ rule bwa_index:
         join(PROJECT_DIR, "03_binning/idx/{batch_or_sample}.fa.sa")
     threads: 1
     resources:
-        mem = 8,
-        time = 2
+        mem_mb = 8000,
+        runtime = 120,
+        cpus_per_task = 1
     container: "containers/samtools_bwa.sif"
     shell: """
         cp {input} {output[0]}
@@ -35,8 +36,9 @@ rule bwa_align:
         join(PROJECT_DIR, "03_binning/alignments/{batch_or_sample}/{sample}.bam")
     threads: 8
     resources:
-        mem = lambda wildcards, attempt: 16 * attempt,
-        time = 12
+        mem_mb = lambda wildcards, attempt: 16000 * attempt,
+        runtime = 720,
+        cpus_per_task = 8
     container: "containers/samtools_bwa.sif"
     shell: """
         mkdir -p $(dirname {output})
@@ -53,8 +55,8 @@ rule metabat_depth:
         depth = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/depth.txt"),
         paired = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/paired.txt")
     resources:
-        mem = 8,
-        time = 6
+        mem_mb = 8000,
+        runtime = 360
     singularity: "docker://quay.io/biocontainers/metabat2:2.15--h137b6e9_0"
     shell: """
         mkdir -p $(dirname {output.depth})
@@ -72,8 +74,9 @@ rule metabat:
         directory(join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/"))
     threads: 8
     resources:
-        mem = 64,
-        time = 24
+        mem_mb = 64000,
+        runtime = 1440,
+        cpus_per_task = 8
     singularity: "docker://quay.io/biocontainers/metabat2:2.15--h137b6e9_0"
     params:
         outstring = join(PROJECT_DIR, "03_binning/metabat/{batch_or_sample}/bins/bin")
@@ -100,8 +103,9 @@ rule maxbin:
         directory(join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/bins"))
     threads: 8
     resources:
-        mem = 32,
-        time = lambda wildcards, attempt: attempt * 6
+        mem_mb = 32000,
+        runtime = lambda wildcards, attempt: attempt * 360,
+        cpus_per_task = 8
     singularity: "docker://quay.io/biocontainers/maxbin2:2.2.7--he1b5a44_1"
     params:
         outfolder = join(PROJECT_DIR, "03_binning/maxbin/{batch_or_sample}/"),
@@ -142,8 +146,8 @@ rule concoct_cut:
         cut_contigs = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.fa"),
         bedfile = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/contigs_10K.bed")
     resources:
-        mem = 64,
-        time = 12
+        mem_mb = 64000,
+        runtime = 720
     singularity: "docker://quay.io/biocontainers/concoct:1.1.0--py27h88e4a8a_0"
     shell: """
         mkdir -p $(dirname {output.cut_contigs})
@@ -158,8 +162,8 @@ rule concoct_coverage:
     output:
         join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/coverage_table.tsv")
     resources:
-        mem = 64,
-        time = 12
+        mem_mb = 64000,
+        runtime = 720
     singularity: "docker://quay.io/biocontainers/concoct:1.1.0--py27h88e4a8a_0"
     shell: """
         concoct_coverage_table.py {input.bedfile} {input.bams} > {output}
@@ -175,8 +179,9 @@ rule concoct_run:
         outdir = join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}")
     threads: 4
     resources:
-        mem = 64, 
-        time = 24
+        mem_mb = 64000,
+        runtime = 1440,
+        cpus_per_task = 4
     singularity: "docker://quay.io/biocontainers/concoct:1.1.0--py27h88e4a8a_0"
     shell: """
         concoct --composition_file {input.cut_contigs} \
@@ -189,8 +194,8 @@ rule concoct_merge:
     output:
         join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/clustering_merged.csv")
     resources:
-        mem = 64,
-        time = 12
+        mem_mb = 64000,
+        runtime = 720
     singularity: "docker://quay.io/biocontainers/concoct:1.1.0--py27h88e4a8a_0"
     shell: """
         merge_cutup_clustering.py {input} > {output}
@@ -203,8 +208,8 @@ rule concoct_extract_bins:
     output:
         directory(join(PROJECT_DIR, "03_binning/concoct/{batch_or_sample}/bins/"))
     resources:
-        mem = 64,
-        time = 12
+        mem_mb = 64000,
+        runtime = 720
     singularity: "docker://quay.io/biocontainers/concoct:1.1.0--py27h88e4a8a_0"
     shell: """
         mkdir -p {output}
@@ -230,8 +235,9 @@ rule DAStool:
         logfile = join(PROJECT_DIR, "03_binning/DAStool/{batch_or_sample}/_DASTool.log")
     threads: 8
     resources:
-        mem = 128,
-        time = lambda wildcards, attempt: attempt * 6
+        mem_mb = 128000,
+        runtime = lambda wildcards, attempt: attempt * 360,
+        cpus_per_task = 8
     shell: """
         mkdir -p {params.outfolder}
         
@@ -299,9 +305,9 @@ rule checkm_DAStool_lineage:
         dir=join(PROJECT_DIR, "04_dRep/checkm/"),
     singularity: "docker://quay.io/biocontainers/checkm-genome:1.2.4--pyhdfd78af_0"
     resources:
-        mem = 32, # was 128, way too much
-        time = 12,
-        threads = 16
+        mem_mb = 32000, # was 128, way too much
+        runtime = 720,
+        cpus_per_task = 16
     threads: 16
     params:
         checkm_data=config["checkm_data"]
@@ -319,8 +325,9 @@ rule checkm_DAStool_qa:
         file=join(PROJECT_DIR, "04_dRep/checkm.tsv"),
     singularity: "docker://quay.io/biocontainers/checkm-genome:1.2.4--pyhdfd78af_0"
     resources:
-        mem = 32, # was 128, way too much
-        time = 12
+        mem_mb = 32000, # was 128, way too much
+        runtime = 720,
+        cpus_per_task = 8
     threads: 8
     params:
         checkm_data=config["checkm_data"]
@@ -352,9 +359,9 @@ rule checkm2_predict:
         dir = directory(join(PROJECT_DIR, "04_dRep/checkm2/")),
     singularity: "docker://quay.io/biocontainers/checkm2:1.0.2--pyh7cba7a3_0"
     resources:
-        mem = 32,
-        time = 72,
-        threads = 16
+        mem_mb = 32000,
+        runtime = 4320,
+        cpus_per_task = 16
     threads: 16
     params:
         checkm2_db = config["checkm2_data"]
@@ -384,8 +391,9 @@ rule dRep_genome_collection_strains:
     singularity: "/u/home/a/averster/mag_creation/containers/drep4.sif"
     threads: 32
     resources:
-        mem = 128,
-        time = 168
+        mem_mb = 128000,
+        runtime = 10080,
+        cpus_per_task = 32
     params:
         drep_dir = join(PROJECT_DIR, "04_dRep/"),
         completeness = 75,

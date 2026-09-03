@@ -14,8 +14,9 @@ rule deduplicate:
         outdir = join(QC_DIR, "01_processing/01_dedup/")
     threads: 1
     resources:
-        mem = lambda wildcards, attempt: attempt * 8, 
-        time = lambda wildcards, attempt: attempt * 4
+        mem_mb = lambda wildcards, attempt: attempt * 8000,
+        runtime = lambda wildcards, attempt: attempt * 240,
+        cpus_per_task = 1
     singularity: "docker://dzs74/htstream"
     benchmark: join(QC_DIR, "01_processing/01_dedup/{sample}_time.txt")
     shell: """
@@ -32,8 +33,9 @@ rule trim_galore:
         rev = join(QC_DIR, "01_processing/02_trimmed/{sample}_R2_val_2.fq.gz"),
     threads: 4
     resources:
-        mem=lambda wildcards, attempt: attempt * 8,
-        time=lambda wildcards, attempt: attempt * 4
+        mem_mb=lambda wildcards, attempt: attempt * 8000,
+        runtime=lambda wildcards, attempt: attempt * 240,
+        cpus_per_task = 4
     params:
         q_min = 30,
         min_len = 60,
@@ -60,8 +62,9 @@ rule host_removal:
         host_ref = config["host_genome"]
     threads: 16
     resources:
-        mem=lambda wildcards, attempt: attempt * 16,
-        time=lambda wildcards, attempt: attempt * 24
+        mem_mb=lambda wildcards, attempt: attempt * 16000,
+        runtime=lambda wildcards, attempt: attempt * 1440,
+        cpus_per_task = 16
     container: "samtools_bwa.sif"
     shell: """
         bwa mem -t {threads} {params.host_ref} {input.fwd} {input.rev} | samtools fastq -@ {threads} -t -T BX -f 12 -1 {output.fwd} -2 {output.rev}

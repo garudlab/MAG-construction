@@ -17,8 +17,9 @@ rule spades_coassembly:
         concat_r1 = temp(join(PROJECT_DIR, "02_metaspades/{batch}/concat_R1.fq")),
         concat_r2 = temp(join(PROJECT_DIR, "02_metaspades/{batch}/concat_R2.fq"))
     resources:
-        time = lambda wildcards, attempt: 72 * attempt,
-        mem = lambda wildcards, attempt: 333 * attempt,
+        runtime = lambda wildcards, attempt: 4320 * attempt,
+        mem_mb = lambda wildcards, attempt: 333000 * attempt,
+        cpus_per_task = 16
     threads: 16
     singularity: "docker://quay.io/biocontainers/spades:3.15.5--h95f258a_1"
     params:
@@ -37,7 +38,7 @@ rule spades_coassembly:
             -1 {output.concat_r1} \
             -2 {output.concat_r2} \
             -o {params.outdir} \
-            -m {resources.mem} \
+            -m $(({resources.mem_mb} / 1000)) \
             -t {threads} \
             --tmp-dir {params.tmp_dir} \
             --only-assembler
@@ -53,8 +54,9 @@ rule spades_single:
         contigs = join(PROJECT_DIR, "02_metaspades/{sample}/contigs.fasta"),
         scaffolds = join(PROJECT_DIR, "02_metaspades/{sample}/scaffolds.fasta")
     resources:
-        time = lambda wildcards, attempt: 24 * attempt,
-        mem = lambda wildcards, attempt: 128 * attempt,
+        runtime = lambda wildcards, attempt: 1440 * attempt,
+        mem_mb = lambda wildcards, attempt: 128000 * attempt,
+        cpus_per_task = 16
     threads: 16
     singularity: "docker://quay.io/biocontainers/spades:3.15.5--h95f258a_1"
     params:
@@ -69,7 +71,7 @@ rule spades_single:
             -1 {input.fwd} \
             -2 {input.rev} \
             -o {params.outdir} \
-            -m {resources.mem} \
+            -m $(({resources.mem_mb} / 1000)) \
             -t {threads} \
             --tmp-dir {params.tmp_dir} \
             --only-assembler
@@ -88,8 +90,9 @@ rule quast_spades:
         outdir = join(PROJECT_DIR, "02_metaspades/{batch_or_sample}/quast"),
         min_contig = 500
     resources:
-        mem = 8,
-        time = 2
+        mem_mb = 8000,
+        runtime = 120,
+        cpus_per_task = 2
     threads: 2
     shell: """
         rm -rf {params.outdir}
